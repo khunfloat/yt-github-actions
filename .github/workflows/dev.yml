@@ -1,0 +1,86 @@
+name: (Dev) Build and Deploy
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Extract short SHA
+        id: meta
+        run: |
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image to GHCR
+        run: |
+          IMAGE_URL=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+          docker build \
+          --build-arg NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE_DEV }} \
+          --build-arg NEXT_PUBLIC_SECRET_KEY=${{ secrets.NEXT_PUBLIC_SECRET_KEY }} \
+          --build-arg NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} \
+          --build-arg NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_DEV }} \
+          --build-arg GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+          --build-arg GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+          -t $IMAGE_URL:beta-${{ steps.meta.outputs.sha }} \
+          -t $IMAGE_URL:beta-latest .
+
+          docker push $IMAGE_URL:beta-${{ steps.meta.outputs.sha }}
+          docker push $IMAGE_URL:beta-latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      HUSKY: 0
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH to DigitalOcean
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+          script: |
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            IMAGE_URL=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+            docker stop ${{ github.event.repository.name }}-beta || true
+            docker rm ${{ github.event.repository.name }}-beta || true
+            docker image prune -a -f
+            docker run -d --name ${{ github.event.repository.name }}-beta -p 5001:3000 \
+            -e NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE_DEV }} \
+            -e NEXT_PUBLIC_SECRET_KEY=${{ secrets.NEXT_PUBLIC_SECRET_KEY }} \
+            -e NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} \
+            -e NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_DEV }} \
+            -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+            -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+            $IMAGE_URL:beta-latest
