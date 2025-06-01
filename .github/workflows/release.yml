@@ -76,7 +76,7 @@ jobs:
           git push origin main
           git push origin "v$version"
 
-      - name: Merge release into dev (no tag)
+      - name: Merge main into dev (no tag)
         run: |
           git checkout dev
           git merge origin/main --no-ff -m "chore(release): main from release into dev"
