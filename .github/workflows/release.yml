@@ -120,12 +120,6 @@ jobs:
         run: |
           IMAGE_URL=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ github.event.repository.name }}
           docker build \
-          --build-arg NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE_PROD }} \
-          --build-arg NEXT_PUBLIC_SECRET_KEY=${{ secrets.NEXT_PUBLIC_SECRET_KEY }} \
-          --build-arg NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} \
-          --build-arg NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_PROD }} \
-          --build-arg GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-          --build-arg GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
           -t $IMAGE_URL:v${{ steps.get_version.outputs.version }} \
           -t $IMAGE_URL:latest .
 
@@ -154,11 +148,5 @@ jobs:
             docker stop ${{ github.event.repository.name }}-prod || true
             docker rm ${{ github.event.repository.name }}-prod || true
             docker image prune -a -f
-            docker run -d --name ${{ github.event.repository.name }}-prod -p 5000:3000 \
-            -e NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE_PROD }} \
-            -e NEXT_PUBLIC_SECRET_KEY=${{ secrets.NEXT_PUBLIC_SECRET_KEY }} \
-            -e NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} \
-            -e NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_PROD }} \
-            -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-            -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+            docker run -d --name ${{ github.event.repository.name }}-prod -p 3000:3000 \
             $IMAGE_URL:latest

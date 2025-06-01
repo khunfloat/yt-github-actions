@@ -42,12 +42,6 @@ jobs:
         run: |
           IMAGE_URL=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ github.event.repository.name }}
           docker build \
-          --build-arg NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE_DEV }} \
-          --build-arg NEXT_PUBLIC_SECRET_KEY=${{ secrets.NEXT_PUBLIC_SECRET_KEY }} \
-          --build-arg NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} \
-          --build-arg NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_DEV }} \
-          --build-arg GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-          --build-arg GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
           -t $IMAGE_URL:beta-${{ steps.meta.outputs.sha }} \
           -t $IMAGE_URL:beta-latest .
 
@@ -76,11 +70,5 @@ jobs:
             docker stop ${{ github.event.repository.name }}-beta || true
             docker rm ${{ github.event.repository.name }}-beta || true
             docker image prune -a -f
-            docker run -d --name ${{ github.event.repository.name }}-beta -p 5001:3000 \
-            -e NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE_DEV }} \
-            -e NEXT_PUBLIC_SECRET_KEY=${{ secrets.NEXT_PUBLIC_SECRET_KEY }} \
-            -e NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} \
-            -e NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL_DEV }} \
-            -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-            -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+            docker run -d --name ${{ github.event.repository.name }}-beta -p 3001:3000 \
             $IMAGE_URL:beta-latest
